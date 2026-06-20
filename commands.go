@@ -138,10 +138,10 @@ func BorrowTool(args []string) error {
 		return fmt.Errorf("工具ID %s 不存在", id)
 	}
 	if tool.Status != StatusAvailable {
-		return fmt.Errorf("工具 [%s] %s 当前状态为 %s，无法借出", id, tool.Name, tool.Status)
+		return fmt.Errorf("工具 [%s] %s 当前状态为 %s，只有在库状态才能借出", id, tool.Name, tool.Status)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	borrowDate := FormatDate(now)
 	expectedReturn := FormatDate(now.AddDate(0, 0, days))
 
@@ -215,7 +215,7 @@ func ReturnTool(args []string) error {
 		return fmt.Errorf("工具 [%s] %s 当前状态为 %s，不是借出中", id, tool.Name, tool.Status)
 	}
 
-	returnDate := FormatDate(time.Now())
+	returnDate := FormatDate(time.Now().UTC())
 	tool.Status = StatusAvailable
 	tool.ActualReturnDate = returnDate
 	tool.ReturnCondition = condition
@@ -249,7 +249,7 @@ func ListOverdue(_ []string) error {
 		return err
 	}
 
-	today := time.Now()
+	today := time.Now().UTC()
 	todayStr := FormatDate(today)
 	hasOverdue := false
 

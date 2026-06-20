@@ -29,6 +29,7 @@ const (
 
 var ValidToolTypes = []string{ToolTypeElectric, ToolTypeManual, ToolTypeMeasure, ToolTypeGardening}
 var ValidConditions = []string{ConditionGood, ConditionMinor, ConditionDamaged}
+var ValidStatuses = []string{StatusAvailable, StatusBorrowed}
 
 type Tool struct {
 	ID       string `json:"id"`
@@ -79,6 +80,39 @@ func IsValidCondition(c string) bool {
 	return false
 }
 
+func IsValidStatus(s string) bool {
+	for _, vs := range ValidStatuses {
+		if vs == s {
+			return true
+		}
+	}
+	return false
+}
+
+func validateStore(store *DataStore) error {
+	for i, tool := range store.Tools {
+		if !IsValidToolType(tool.Type) {
+			return fmt.Errorf("工具 [%s] 类型无效: %q，可选值: %v", tool.ID, tool.Type, ValidToolTypes)
+		}
+		if !IsValidStatus(tool.Status) {
+			return fmt.Errorf("工具 [%s] 状态无效: %q，可选值: %v", tool.ID, tool.Status, ValidStatuses)
+		}
+		if tool.ReturnCondition != "" && !IsValidCondition(tool.ReturnCondition) {
+			return fmt.Errorf("工具 [%s] 归还状况无效: %q，可选值: %v", tool.ID, tool.ReturnCondition, ValidConditions)
+		}
+		_ = i
+	}
+	for i, record := range store.Records {
+		if !IsValidToolType(record.ToolType) {
+			return fmt.Errorf("借阅记录[%d] 工具类型无效: %q，可选值: %v", i, record.ToolType, ValidToolTypes)
+		}
+		if record.ReturnCondition != "" && !IsValidCondition(record.ReturnCondition) {
+			return fmt.Errorf("借阅记录[%d] 归还状况无效: %q，可选值: %v", i, record.ReturnCondition, ValidConditions)
+		}
+	}
+	return nil
+}
+
 func LoadData() (*DataStore, error) {
 	if _, err := os.Stat(dataFile); os.IsNotExist(err) {
 		return &DataStore{
@@ -93,6 +127,9 @@ func LoadData() (*DataStore, error) {
 	var store DataStore
 	if err := json.Unmarshal(data, &store); err != nil {
 		return nil, fmt.Errorf("解析数据文件失败: %w", err)
+	}
+	if err := validateStore(&store); err != nil {
+		return nil, fmt.Errorf("数据校验失败: %w", err)
 	}
 	return &store, nil
 }
@@ -118,7 +155,8 @@ func FindTool(store *DataStore, id string) *Tool {
 }
 
 func ParseDate(s string) (time.Time, error) {
-	return time.Parse("2006-01-02", s)
+	loc := time.UTC
+	return time.ParseInLocation("2006-01-02", s, loc)
 }
 
 func FormatDate(t time.Time) string {
